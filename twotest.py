@@ -3,7 +3,7 @@ import torch
 import torchvision
 import numpy as np
 from PIL import Image
-from torchvision.models import swin_transformer
+# from torchvision.models import swin_transformer
 import time
 from glob import glob
 from tqdm import tqdm
@@ -12,10 +12,24 @@ import cv2
 import pandas
 import os
 import shelve
+from model import ft_net
+from utils2 import fuse_all_conv_bn
+
+
+model_structure = ft_net(751, stride = 2, ibn = False, linear_num=512)
+
+def load_network(network):
+    save_path = 'model/ft_ResNet50/net_last.pth'
+    network.load_state_dict(torch.load(save_path))
+    return network
+
+model = load_network(model_structure)
+model = model.eval()
+# model = model.cuda()
+model = fuse_all_conv_bn(model)
 
 # Load models
-model = torchvision.models.swin_transformer.swin_s(pretrained=True)
-model.eval()
+# model = torchvision.models.swin_transformer.swin_s(pretrained=True)
 yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained=True)
 yolo_model.eval()
 
@@ -114,6 +128,8 @@ try:
         predictions = yolo_model(frame)
         df = predictions.pandas().xyxy[0]
 
+        
+
         # Loop over the rows of the DataFrame
         for index, row in df.iterrows():
             if row['class'] == 0: # If class is person
@@ -170,7 +186,7 @@ try:
                 # Draw ID on frame
                 cv2.putText(frame, f"ID: {temp_id}", (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                 cv2.putText(frame, f"ID: {temp_id}", (xmax, ymax), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
-                
+
 
         # Display frame with annotations
         cv2.imshow("Frame", frame)
